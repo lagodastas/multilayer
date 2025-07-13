@@ -2,6 +2,9 @@
 #make run      # Запустить приложение - бинарник
 #run-dev	   # Запустить приложение - go run ./cmd/server/main.
 #make test     # Запустить тесты
+#make test-integration # Запустить интеграционные тесты
+#make test-e2e # Запустить end-to-end тесты
+#make test-all # Запустить все тесты
 #make lint     # Проверить код линтером
 #make clean    # Очистить артефакты сборки
 #make help     # Показать справку
@@ -19,7 +22,7 @@ BINARY_NAME := multilayer
 GO_FILES := $(shell powershell -Command "Get-ChildItem -Recurse -Filter '*.go' -Exclude 'vendor' | ForEach-Object { $_.FullName }")
 DOCKER_IMAGE := multilayer-app
 
-.PHONY: all build clean test lint run help docker-build docker-run docker-clean docker-compose-dev docker-compose-prod k8s-deploy k8s-deploy-local k8s-undeploy
+.PHONY: all build clean test test-integration test-e2e test-all lint run help docker-build docker-run docker-clean docker-compose-dev docker-compose-prod k8s-deploy k8s-deploy-local k8s-undeploy
 
 all: build
 
@@ -40,10 +43,24 @@ run-dev:
 	@echo "Starting application with go run..."
 	go run ./cmd/server/main.go
 
-## Run tests
+## Run unit tests
 test:
-	@echo "Running tests..."
-	@go test -v -cover  -count=1 -race  ./...
+	@echo "Running unit tests..."
+	@go test -v -cover  -count=1 -race  ./internal/...
+
+## Run integration tests
+test-integration:
+	@echo "Running integration tests..."
+	@go test -v -cover -count=1 -race ./tests/integration/...
+
+## Run end-to-end tests
+test-e2e:
+	@echo "Running end-to-end tests..."
+	@go test -v -cover -count=1 -race ./tests/integration/ -run "TestE2E"
+
+## Run all tests (unit + integration + e2e)
+test-all: test test-integration test-e2e
+	@echo "All tests completed!"
 
 ## Run tests with coverage report
 test-cover:
@@ -51,6 +68,13 @@ test-cover:
 	@go test -coverprofile=coverage.out ./...
 	@go tool cover -count=1 -race -html=coverage.out -o coverage.html
 	@echo "Coverage report generated: coverage.html"
+
+## Run integration tests with coverage
+test-integration-cover:
+	@echo "Running integration tests with coverage..."
+	@go test -coverprofile=coverage-integration.out ./tests/integration/...
+	@go tool cover -count=1 -race -html=coverage-integration.out -o coverage-integration.html
+	@echo "Integration coverage report generated: coverage-integration.html"
 
 ## Run linters (requires golangci-lint)
 lint:
@@ -65,6 +89,8 @@ clean:
 	@if exist $(BINARY_NAME) rm $(BINARY_NAME)
 	@if exist coverage.out rm coverage.out
 	@if exist coverage.html del coverage.html
+	@if exist coverage-integration.out rm coverage-integration.out
+	@if exist coverage-integration.html del coverage-integration.html
 
 ## Build Docker image
 docker-build:
@@ -135,8 +161,12 @@ help:
 	@echo "Available targets:"
 	@echo "  build              - Compile the application"
 	@echo "  run                - Build and run the application"
-	@echo "  test               - Run tests"
+	@echo "  test               - Run unit tests"
+	@echo "  test-integration   - Run integration tests"
+	@echo "  test-e2e           - Run end-to-end tests"
+	@echo "  test-all           - Run all tests (unit + integration + e2e)"
 	@echo "  test-cover         - Run tests with coverage report"
+	@echo "  test-integration-cover - Run integration tests with coverage"
 	@echo "  lint               - Run linters"
 	@echo "  clean              - Remove build artifacts"
 	@echo "  docker-build       - Build Docker image"
@@ -149,7 +179,6 @@ help:
 	@echo "  k8s-deploy-local   - Deploy to local Kubernetes cluster"
 	@echo "  k8s-undeploy       - Undeploy from Kubernetes"
 	@echo "  k8s-status         - Show Kubernetes status"
-	@echo "  help               - Show this help message"
 
 
 ## Run migrations
