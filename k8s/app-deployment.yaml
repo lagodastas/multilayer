@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: multilayer-app
+  namespace: multilayer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: multilayer-app
+  template:
+    metadata:
+      labels:
+        app: multilayer-app
+    spec:
+      containers:
+      - name: multilayer-app
+        image: therion84/multilayer-app-prod:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        env:
+        - name: ENV
+          valueFrom:
+            configMapKeyRef:
+              name: multilayer-config
+              key: ENV
+        - name: DB_TYPE
+          valueFrom:
+            configMapKeyRef:
+              name: multilayer-config
+              key: DB_TYPE
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: multilayer-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: multilayer-config
+              key: DB_PORT
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: multilayer-secret
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: multilayer-secret
+              key: DB_PASSWORD
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: multilayer-config
+              key: DB_NAME
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: multilayer-config
+              key: PORT
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5 
